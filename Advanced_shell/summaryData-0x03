@@ -15,38 +15,28 @@ fi
 # Initialize CSV file with header
 echo "Name,Height (m),Weight (kg)" > "$REPORT_FILE"
 
-# Initialize variables for averages
-total_height=0
-total_weight=0
-count=0
-
-# Process each JSON file
+# Process each JSON file and append rows to the CSV
 for json_file in "$DATA_DIR"/*.json; do
     if [ -f "$json_file" ]; then
-        # Extract data using jq
-        name=$(jq -r '.name' "$json_file")
+        name=$(jq -r '.name' "$json_file" | sed 's/.*/\u&/')
         height=$(jq -r '.height' "$json_file")
         weight=$(jq -r '.weight' "$json_file")
-        
-        # Convert units
-        height_m=$(echo "scale=2; $height / 10" | bc)
-        weight_kg=$(echo "scale=2; $weight / 10" | bc)
-        
-        # Add to CSV
-        echo "${name^},$height_m,$weight_kg" >> "$REPORT_FILE"
-        
-        # Accumulate for averages
-        total_height=$(echo "scale=2; $total_height + $height_m" | bc)
-        total_weight=$(echo "scale=2; $total_weight + $weight_kg" | bc)
-        count=$((count + 1))
+
+        # Convert units using awk and format to 2 decimals for CSV
+        height_m=$(awk "BEGIN{printf \"%.2f\", $height/10}")
+        weight_kg=$(awk "BEGIN{printf \"%.2f\", $weight/10}")
+
+        echo "${name},${height_m},${weight_kg}" >> "$REPORT_FILE"
     fi
 done
 
-# Calculate averages using awk for precision
-avg_height=$(echo "scale=2; $total_height / $count" | bc)
-avg_weight=$(echo "scale=2; $total_weight / $count" | bc)
+# Normalize formatting with sed (ensure leading dot becomes leading 0, e.g. .70 -> 0.70)
+sed -i 's/,\./,0./g' "$REPORT_FILE"
 
-# Display results
+# Calculate averages using awk
+avg_height=$(awk -F, 'NR>1{h+=$2; c++} END{if(c>0) printf "%.2f", h/c; else print "0.00"}' "$REPORT_FILE")
+avg_weight=$(awk -F, 'NR>1{w+=$3; c++} END{if(c>0) printf "%.2f", w/c; else print "0.00"}' "$REPORT_FILE")
+
 echo "CSV Report generated at: $REPORT_FILE"
 echo ""
 cat "$REPORT_FILE"
