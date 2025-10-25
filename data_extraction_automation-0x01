@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Task 1: Extract Pokémon Data
+# Objective: Use advanced text manipulation tools to extract specific data
+
+JSON_FILE="data.json"
+
+# Check if data.json exists
+if [ ! -f "$JSON_FILE" ]; then
+    echo "Error: $JSON_FILE not found. Please run Task 0 first."
+    exit 1
+fi
+
+# Extract data using jq and format with sed/awk
+name=$(jq -r '.name' "$JSON_FILE")
+height=$(jq -r '.height' "$JSON_FILE")
+weight=$(jq -r '.weight' "$JSON_FILE")
+type=$(jq -r '.types[0].type.name' "$JSON_FILE")
+
+# Convert height from decimeters to meters and weight from hectograms to kilograms
+height_m=$(echo "scale=1; $height / 10" | bc)
+weight_kg=$(echo "scale=1; $weight / 10" | bc)
+
+# Capitalize first letter of type
+type_capitalized=$(echo "$type" | sed 's/.*/\u&/')
+
+# Format and display the output
+echo "${name^} is of type ${type_capitalized}, weighs ${weight_kg}kg, and is ${height_m}m tall."
